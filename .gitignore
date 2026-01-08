@@ -25,3 +25,4 @@ dist-ssr
 dist-electron
 release
 .npmrc
+examples

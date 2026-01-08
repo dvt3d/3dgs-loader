@@ -1,3 +1,4 @@
-import { parsePly } from '../src/parsers/ply-parser'
 
-onmessage = (message) => {}
+onmessage = (message) => {
+  console.log(message);
+}
