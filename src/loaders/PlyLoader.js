@@ -1,30 +1,13 @@
-import WorkerPool from '../WorkerPool'
 import { parsePlyToColumns, parsePlyToSplat } from '../parsers/PlyParser'
-import { requestBuffer } from '../Request'
+import { requestData } from '../Util'
+import Loader from './Loader'
 
-class PlyLoader {
+class PlyLoader extends Loader {
   constructor(options = {}) {
-    this._baseUrl = new URL(options.baseUrl || './', import.meta.url)
-    this._workerLimit = options.workerLimit || 0
-    this._workerPool = null
-    if (this._workerLimit > 0) {
-      this._workerPool = new WorkerPool({
-        url: new URL('workers/ply.worker.min.js', this._baseUrl).href,
-        workerLimit: this._workerLimit,
-      })
-    }
-  }
-
-  /**
-   *
-   * @param path
-   * @param options
-   * @returns {Promise<void>}
-   */
-  async loadColumns(path, options = {}) {
-    const { onProgress } = options
-    const buffer = await requestBuffer(path, onProgress)
-    return this.parseColumns(buffer)
+    super({
+      ...options,
+      workerName: 'ply.worker.min.js',
+    })
   }
 
   /**
@@ -50,8 +33,8 @@ class PlyLoader {
    */
   async loadAsSplat(path, options = {}) {
     const { onProgress } = options
-    const buffer = await requestBuffer(path, onProgress)
-    return await this.parseAsSplat(buffer)
+    const data = await requestData(path, onProgress)
+    return await this.parseAsSplat(data)
   }
 
   /**
