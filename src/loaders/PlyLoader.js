@@ -1,14 +1,15 @@
 import WorkerPool from '../WorkerPool'
-import { parsePlyToColumns, parsePlyToSplat } from '../parsers/ply-parser'
+import { parsePlyToColumns, parsePlyToSplat } from '../parsers/PlyParser'
+import { requestBuffer } from '../Request'
 
 class PlyLoader {
   constructor(options = {}) {
-    this._baseUrl = options.baseURL || ''
+    this._baseUrl = new URL(options.baseUrl || './', import.meta.url)
     this._workerLimit = options.workerLimit || 0
     this._workerPool = null
     if (this._workerLimit > 0) {
       this._workerPool = new WorkerPool({
-        url: new URL('workers/ply-worker.min.js', this._baseUrl).href,
+        url: new URL('workers/ply.worker.min.js', this._baseUrl).href,
         workerLimit: this._workerLimit,
       })
     }
@@ -17,13 +18,13 @@ class PlyLoader {
   /**
    *
    * @param path
+   * @param options
+   * @returns {Promise<void>}
    */
-  async loadColumns(path) {
-    const res = await fetch(path)
-    if (!res.ok) {
-      throw new Error(`Failed to fetch ${path}`)
-    }
-    return await this.parseColumns(new Uint8Array(await res.arrayBuffer()))
+  async loadColumns(path, options = {}) {
+    const { onProgress } = options
+    const buffer = await requestBuffer(path, onProgress)
+    return this.parseColumns(buffer)
   }
 
   /**
@@ -47,12 +48,10 @@ class PlyLoader {
    * @param path
    * @returns {Promise<void>}
    */
-  async loadAsSplat(path) {
-    const res = await fetch(path)
-    if (!res.ok) {
-      throw new Error(`Failed to fetch ${path}`)
-    }
-    return await this.parseAsSplat(new Uint8Array(await res.arrayBuffer()))
+  async loadAsSplat(path, options = {}) {
+    const { onProgress } = options
+    const buffer = await requestBuffer(path, onProgress)
+    return await this.parseAsSplat(buffer)
   }
 
   /**

@@ -5,12 +5,11 @@
 
 'use strict'
 
+import fg from 'fast-glob'
 import fse from 'fs-extra'
 import path from 'path'
 import gulp from 'gulp'
 import esbuild from 'esbuild'
-import GlobalsPlugin from 'esbuild-plugin-globals'
-import { glsl } from 'esbuild-plugin-glsl'
 import shell from 'shelljs'
 import chalk from 'chalk'
 
@@ -20,11 +19,23 @@ const buildConfig = {
   color: true,
   legalComments: `inline`,
   logLimit: 0,
-  target: `es2019`,
+  target: `es2020`,
   minify: false,
   sourcemap: false,
   write: true,
   logLevel: 'info',
+}
+
+async function buildWorkers(options = {}) {
+  const entryPoints = await fg('src/workers/*.worker.js')
+  await esbuild.build({
+    ...buildConfig,
+    entryPoints,
+    format: 'esm',
+    minify: options.minify,
+    outdir: path.join('dist', 'workers'),
+    entryNames: '[name].min',
+  })
 }
 
 async function buildModules(options) {
@@ -52,6 +63,7 @@ async function buildModules(options) {
 async function regenerate(option, content) {
   await fse.remove('dist/index.js')
   await buildModules(option)
+  await buildWorkers(option)
 }
 
 export const dev = gulp.series(() => {
@@ -81,12 +93,16 @@ export const buildIIFE = gulp.series(() => buildModules({ iife: true }))
 
 export const buildNode = gulp.series(() => buildModules({ node: true }))
 
+export const buildWorker = gulp.series(() => buildModules())
+
 export const build = gulp.series(
   () => buildModules({ iife: true }),
   () => buildModules({ node: true }),
+  () => buildWorkers(),
 )
 
 export const buildRelease = gulp.series(
   () => buildModules({ iife: true, minify: true }),
   () => buildModules({ node: true, minify: true }),
+  () => buildWorkers({ minify: true }),
 )

@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+examples
 
 # Editor directories and files
 .vscode/*
@@ -25,4 +26,3 @@ dist-ssr
 dist-electron
 release
 .npmrc
-examples
