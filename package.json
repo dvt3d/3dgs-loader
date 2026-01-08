@@ -1,0 +1,20 @@
+{
+  "name": "3dgs-loader",
+  "version": "0.0.2",
+  "main": "index.js",
+  "repository": "https://github.com/dvt3d/gs-loader.git",
+  "author": "Caven Chen <cavencj@gmail.com>",
+  "keywords": [
+    "3dgs-loader",
+    "3dgs",
+    "gs",
+    "spz",
+    "sog",
+    "splat",
+    "ply"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.7.4"
+  }
+}
