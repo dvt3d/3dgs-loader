@@ -1,14 +1,17 @@
 import WorkerPool from '../WorkerPool'
-import { parsePlyToColumns } from '../parsers/ply-parser'
+import { parsePlyToColumns, parsePlyToSplat } from '../parsers/ply-parser'
 
 class PlyLoader {
   constructor(options = {}) {
     this._baseUrl = options.baseURL || ''
     this._workerLimit = options.workerLimit || 0
-    this._workerPool = new WorkerPool({
-      url: new URL('workers/ply-worker.min.js', this._baseUrl).href,
-      workerLimit: this._workerLimit,
-    })
+    this._workerPool = null
+    if (this._workerLimit > 0) {
+      this._workerPool = new WorkerPool({
+        url: new URL('workers/ply-worker.min.js', this._baseUrl).href,
+        workerLimit: this._workerLimit,
+      })
+    }
   }
 
   /**
@@ -65,7 +68,7 @@ class PlyLoader {
         transfer: [data.buffer],
       })
     }
-    return Promise.resolve()
+    return Promise.resolve(parsePlyToSplat(data))
   }
 }
 

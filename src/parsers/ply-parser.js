@@ -3,6 +3,19 @@ const endHeaderBytes = new Uint8Array([
   10, 101, 110, 100, 95, 104, 101, 97, 100, 101, 114, 10,
 ])
 
+const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4
+const SH_C0 = 0.28209479177387814
+
+const TYPE_MAP = {
+  double: 'getFloat64',
+  int: 'getInt32',
+  uint: 'getUint32',
+  float: 'getFloat32',
+  short: 'getInt16',
+  ushort: 'getUint16',
+  uchar: 'getUint8',
+}
+
 /**
  *
  * @param type
@@ -112,41 +125,153 @@ export function parsePlyToColumns(data) {
   if (!_compare(data, magicBytes)) {
     throw new Error('not a ply file')
   }
+  /* ---------- scan header ---------- */
   let headerSize = magicBytes.length
-  while (headerSize < data.size) {
-    if (_compare(data, endHeaderBytes, headerSize - endHeaderBytes.length))
+  while (headerSize < data.length) {
+    if (_compare(data, endHeaderBytes, headerSize - endHeaderBytes.length)) {
       break
+    }
     headerSize++
   }
   const header = _parseHeader(data.subarray(0, headerSize))
   const body = data.subarray(headerSize)
   let cursor = 0
-  const element = {}
+  const elements = {}
   for (const el of header.elements) {
     const columns = {}
-    const sizes = []
+    const props = []
     for (const prop of el.properties) {
       const T = _getDataType(prop.type)
-      columns[prop.name] = new T(el.count)
-      sizes.push(columns[prop.name].BYTES_PER_ELEMENT)
+      const arr = new T(el.count)
+      columns[prop.name] = arr
+      props.push({
+        name: prop.name,
+        bytes: arr.BYTES_PER_ELEMENT,
+        view: new Uint8Array(arr.buffer),
+      })
     }
-    const rowSize = sizes.reduce((a, b) => a + b, 0)
+    const rowSize = props.reduce((s, p) => s + p.bytes, 0)
     for (let i = 0; i < el.count; i++) {
       let offset = 0
-      for (const prop of el.properties) {
-        const arr = columns[prop.name]
-        const s = arr.BYTES_PER_ELEMENT
-        body.copy(
-          new Uint8Array(arr.buffer),
-          i * s,
-          cursor + offset,
-          cursor + offset + s,
-        )
-        offset += s
+      for (const p of props) {
+        const srcStart = cursor + offset
+        const srcEnd = srcStart + p.bytes
+        p.view.set(body.subarray(srcStart, srcEnd), i * p.bytes)
+        offset += p.bytes
       }
       cursor += rowSize
     }
-    element[el.name] = { numSplats: el.count, columns }
+    elements[el.name] = {
+      numSplats: el.count,
+      columns,
+    }
   }
-  return element['vertex']
+
+  return elements['vertex']
+}
+
+/**
+ * Parse binary PLY and output splat ArrayBuffer
+ * @param {Uint8Array} data
+ * @returns {{ buffer: ArrayBuffer, numSplats: number }}
+ */
+export function parsePlyToSplat(data) {
+  if (!_compare(data, magicBytes)) {
+    throw new Error('not a ply file')
+  }
+  /* ---------- scan header ---------- */
+  let headerSize = magicBytes.length
+  while (headerSize < data.length) {
+    if (_compare(data, endHeaderBytes, headerSize - endHeaderBytes.length)) {
+      break
+    }
+    headerSize++
+  }
+  const plyHeader = _parseHeader(data.subarray(0, headerSize))
+
+  const vertex = plyHeader.elements.find((e) => e.name === 'vertex')
+  if (!vertex) {
+    throw new Error('PLY has no vertex element')
+  }
+
+  let rowStride = 0
+  const offsets = {}
+  const types = {}
+  for (const prop of vertex.properties) {
+    const T = _getDataType(prop.type)
+    offsets[prop.name] = rowStride
+    types[prop.name] = TYPE_MAP[prop.type]
+    rowStride += T.BYTES_PER_ELEMENT
+  }
+
+  const numSplats = vertex.count
+
+  /* ---------- data view ---------- */
+  const bodyOffset = data.byteOffset + headerSize
+  const dv = new DataView(data.buffer, bodyOffset, numSplats * rowStride)
+
+  const getAttr = (row, name) => {
+    const fn = types[name]
+    if (!fn) return undefined
+    return dv[fn](row * rowStride + offsets[name], true)
+  }
+
+  /* ---------- output buffer ---------- */
+  const outBuffer = new ArrayBuffer(ROW_LENGTH * numSplats)
+  const outF32 = new Float32Array(outBuffer)
+  const outU8 = new Uint8ClampedArray(outBuffer)
+
+  const hasScale = 'scale_0' in types
+  const hasColorSH = 'f_dc_0' in types
+  const hasOpacity = 'opacity' in types
+
+  for (let i = 0; i < numSplats; i++) {
+    const baseF32 = (i * ROW_LENGTH) >> 2
+    const baseU8 = i * ROW_LENGTH
+    // position
+    const x = getAttr(i, 'x')
+    const y = getAttr(i, 'y')
+    const z = getAttr(i, 'z')
+    outF32[baseF32 + 0] = x
+    outF32[baseF32 + 1] = y
+    outF32[baseF32 + 2] = z
+    if (hasScale) {
+      const s0 = getAttr(i, 'scale_0')
+      const s1 = getAttr(i, 'scale_1')
+      const s2 = getAttr(i, 'scale_2')
+      const q0 = getAttr(i, 'rot_0')
+      const q1 = getAttr(i, 'rot_1')
+      const q2 = getAttr(i, 'rot_2')
+      const q3 = getAttr(i, 'rot_3')
+      const invLen = 1 / Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
+      outF32[baseF32 + 3] = Math.exp(s0)
+      outF32[baseF32 + 4] = Math.exp(s1)
+      outF32[baseF32 + 5] = Math.exp(s2)
+      outU8[baseU8 + 28] = q0 * invLen * 128 + 128
+      outU8[baseU8 + 29] = q1 * invLen * 128 + 128
+      outU8[baseU8 + 30] = q2 * invLen * 128 + 128
+      outU8[baseU8 + 31] = q3 * invLen * 128 + 128
+    } else {
+      outF32[baseF32 + 3] = outF32[baseF32 + 4] = outF32[baseF32 + 5] = 0.01
+      outU8[baseU8 + 28] = 255
+    }
+
+    // color
+    if (hasColorSH) {
+      outU8[baseU8 + 24] = (0.5 + SH_C0 * getAttr(i, 'f_dc_0')) * 255
+      outU8[baseU8 + 25] = (0.5 + SH_C0 * getAttr(i, 'f_dc_1')) * 255
+      outU8[baseU8 + 26] = (0.5 + SH_C0 * getAttr(i, 'f_dc_2')) * 255
+    } else {
+      outU8[baseU8 + 24] = getAttr(i, 'red')
+      outU8[baseU8 + 25] = getAttr(i, 'green')
+      outU8[baseU8 + 26] = getAttr(i, 'blue')
+    }
+
+    // alpha
+    outU8[baseU8 + 27] = hasOpacity
+      ? (1 / (1 + Math.exp(-getAttr(i, 'opacity')))) * 255
+      : 255
+  }
+
+  return { buffer: outBuffer, numSplats }
 }

@@ -1,7 +1,7 @@
 {
   "name": "3dgs-loader",
   "version": "0.0.2",
-  "main": "index.js",
+  "main": "dist/index.js",
   "repository": "https://github.com/dvt3d/gs-loader.git",
   "author": "Caven Chen <cavencj@gmail.com>",
   "keywords": [
@@ -13,8 +13,29 @@
     "splat",
     "ply"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "rimraf dist && gulp dev",
+    "build": "rimraf dist && gulp build",
+    "build:node": "rimraf dist && gulp buildNode",
+    "build:iife": "rimraf dist && gulp buildIIFE",
+    "build:release": "rimraf dist && gulp buildRelease",
+    "prepublishOnly": "yarn run build:release",
+    "lint": "eslint --fix src"
+  },
+  "files": [
+    "dist",
+    "wasm"
+  ],
   "devDependencies": {
-    "prettier": "^3.7.4"
+    "chalk": "^5.6.2",
+    "esbuild": "^0.27.2",
+    "esbuild-plugin-globals": "^0.2.0",
+    "esbuild-plugin-glsl": "^1.4.1",
+    "fs-extra": "^11.3.3",
+    "gulp": "^5.0.1",
+    "prettier": "^3.7.4",
+    "rimraf": "^6.1.2",
+    "shelljs": "^0.10.0"
   }
 }
