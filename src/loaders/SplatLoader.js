@@ -2,6 +2,8 @@ import { parseSplatToColumns } from '../parsers/SplatParser'
 import { requestData } from '../Util'
 import Loader from './Loader'
 
+const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4
+
 class SplatLoader extends Loader {
   constructor(options = {}) {
     super({
@@ -28,11 +30,17 @@ class SplatLoader extends Loader {
   /**
    *
    * @param path
-   * @returns {Promise<void>}
+   * @param options
+   * @returns {Promise<{numSplats: number, buffer: *}>}
    */
   async load(path, options = {}) {
     const { onProgress } = options
-    return await requestData(path, onProgress)
+    const data = await requestData(path, onProgress)
+    const numSplats = data.length / ROW_LENGTH
+    return {
+      numSplats,
+      buffer: data.buffer,
+    }
   }
 }
 

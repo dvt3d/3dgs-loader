@@ -1,4 +1,4 @@
-import { parsePlyToColumns, parsePlyToSplat } from '../parsers/PlyParser'
+import { parseSpzToColumns, parseSpzToSplat } from '../parsers/SpzParser'
 import { requestData } from '../Util'
 import Loader from './Loader'
 
@@ -13,7 +13,7 @@ class SpzLoader extends Loader {
   /**
    *
    * @param data
-   * @returns {Promise<void>}
+   * @returns {Promise<*>}
    */
   async parseColumns(data) {
     if (this._workerLimit > 0) {
@@ -23,7 +23,7 @@ class SpzLoader extends Loader {
         transfer: [data.buffer],
       })
     }
-    return Promise.resolve(parsePlyToColumns(data))
+    return Promise.resolve(parseSpzToColumns(data))
   }
 
   /**
@@ -50,7 +50,7 @@ class SpzLoader extends Loader {
         transfer: [data.buffer],
       })
     }
-    return Promise.resolve(parsePlyToSplat(data))
+    return Promise.resolve(parseSpzToSplat(data))
   }
 }
 
