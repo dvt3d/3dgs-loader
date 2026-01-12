@@ -105,7 +105,7 @@ class WorkerPool {
   /**
    *
    */
-  destroy() {
+  dispose() {
     for (const w of this.workers) {
       w.terminate()
     }

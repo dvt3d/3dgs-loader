@@ -11,14 +11,15 @@ class SplatLoader extends Loader {
       workerName: 'splat.worker.min.js',
     })
   }
+
   /**
    *
    * @param data
-   * @returns {Promise<*>}
+   * @returns {Promise<Awaited<{numSplats: *, columns: {x: Float32Array<ArrayBuffer>, y: Float32Array<ArrayBuffer>, z: Float32Array<ArrayBuffer>, scale_0: Float32Array<ArrayBuffer>, scale_1: Float32Array<ArrayBuffer>, scale_2: Float32Array<ArrayBuffer>, f_dc_0: Float32Array<ArrayBuffer>, f_dc_1: Float32Array<ArrayBuffer>, f_dc_2: Float32Array<ArrayBuffer>, opacity: Float32Array<ArrayBuffer>, rot_0: Float32Array<ArrayBuffer>, rot_1: Float32Array<ArrayBuffer>, rot_2: Float32Array<ArrayBuffer>, rot_3: Float32Array<ArrayBuffer>}}>>|Promise<never>|Promise<*>|Promise<*>|*}
    */
-  async parseColumns(data) {
+  parseColumns(data) {
     if (this._workerLimit > 0) {
-      return await this._workerPool.run({
+      return this._workerPool.run({
         type: 'parseColumns',
         payload: data,
         transfer: [data.buffer],
@@ -29,13 +30,13 @@ class SplatLoader extends Loader {
 
   /**
    *
-   * @param path
+   * @param url
    * @param options
    * @returns {Promise<{numSplats: number, buffer: *}>}
    */
-  async load(path, options = {}) {
+  async load(url, options = {}) {
     const { onProgress } = options
-    const data = await requestData(path, onProgress)
+    const data = await requestData(url, onProgress)
     const numSplats = data.length / ROW_LENGTH
     return {
       numSplats,

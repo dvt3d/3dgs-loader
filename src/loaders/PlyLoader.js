@@ -15,9 +15,9 @@ class PlyLoader extends Loader {
    * @param data
    * @returns {Promise<void>}
    */
-  async parseColumns(data) {
+  parseColumns(data) {
     if (this._workerLimit > 0) {
-      return await this._workerPool.run({
+      return this._workerPool.run({
         type: 'parseColumns',
         payload: data,
         transfer: [data.buffer],
@@ -28,13 +28,14 @@ class PlyLoader extends Loader {
 
   /**
    *
-   * @param path
-   * @returns {Promise<void>}
+   * @param url
+   * @param options
+   * @returns {Promise<*>}
    */
-  async loadAsSplat(path, options = {}) {
+  async loadAsSplat(url, options = {}) {
     const { onProgress } = options
-    const data = await requestData(path, onProgress)
-    return await this.parseAsSplat(data)
+    const data = await requestData(url, onProgress)
+    return this.parseAsSplat(data)
   }
 
   /**
@@ -42,9 +43,9 @@ class PlyLoader extends Loader {
    * @param data
    * @returns {Promise<*>}
    */
-  async parseAsSplat(data) {
+  parseAsSplat(data) {
     if (this._workerLimit > 0) {
-      return await this._workerPool.run({
+      return this._workerPool.run({
         type: 'parseAsSplat',
         payload: data,
         transfer: [data.buffer],

@@ -25,6 +25,7 @@ onmessage = (message) => {
       transfer,
     )
   } catch (e) {
+    console.error(e)
     postMessage({
       id: data.id,
       result: null,

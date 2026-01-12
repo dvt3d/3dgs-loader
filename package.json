@@ -36,5 +36,8 @@
     "prettier": "^3.7.4",
     "rimraf": "^6.1.2",
     "shelljs": "^0.10.0"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
   }
 }
