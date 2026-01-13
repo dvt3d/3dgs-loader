@@ -6,6 +6,7 @@ const SH_C0 = 0.28209479177387814
 /**
  *
  * @param data
+ * @returns {{numSplats: number, columns: * }}
  */
 export function parseSplatToColumns(data) {
   const numSplats = data.length / ROW_LENGTH

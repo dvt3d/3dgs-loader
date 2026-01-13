@@ -66,6 +66,19 @@ function _unpackQuat(px, py, pz, tag) {
   return comps
 }
 
+/**
+ *
+ * @param webpUrl
+ * @param meta
+ * @param means_l
+ * @param means_u
+ * @param quats
+ * @param scales
+ * @param colors
+ * @param centroids
+ * @param labels
+ * @returns {Promise<*>}
+ */
 export async function parseSogToColumns(
   webpUrl,
   meta,
@@ -199,7 +212,7 @@ export async function parseSogToColumns(
  * @param quats
  * @param scales
  * @param colors
- * @returns {Promise<{numSplats: *, columns: {x: Float32Array<ArrayBuffer>, y: Float32Array<ArrayBuffer>, z: Float32Array<ArrayBuffer>, scale_0: Float32Array<ArrayBuffer>, scale_1: Float32Array<ArrayBuffer>, scale_2: Float32Array<ArrayBuffer>, f_dc_0: Float32Array<ArrayBuffer>, f_dc_1: Float32Array<ArrayBuffer>, f_dc_2: Float32Array<ArrayBuffer>, opacity: Float32Array<ArrayBuffer>, rot_0: Float32Array<ArrayBuffer>, rot_1: Float32Array<ArrayBuffer>, rot_2: Float32Array<ArrayBuffer>, rot_3: Float32Array<ArrayBuffer>}}>}
+ * @returns {Promise<*>}
  */
 export async function parseSogToSplat(
   webpUrl,

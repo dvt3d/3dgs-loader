@@ -16,7 +16,7 @@ class SogLoader extends loader {
    *
    * @param url
    * @param options
-   * @returns {Promise<{meta: *, sogData: Awaited<*>[]}>}
+   * @returns {Promise<*>}
    * @private
    */
   async _loadData(url, options = {}) {
@@ -73,7 +73,8 @@ class SogLoader extends loader {
    *
    * @param url
    * @param options
-   * @returns {Promise<void>}
+   * @returns {Promise<*>}
+   *
    */
   async loadColumns(url, options = {}) {
     const { onProgress } = options
@@ -87,7 +88,7 @@ class SogLoader extends loader {
   /**
    *
    * @param data
-   * @returns {Promise<{numSplats: *, columns: {x: Float32Array<ArrayBuffer>, y: Float32Array<ArrayBuffer>, z: Float32Array<ArrayBuffer>, scale_0: Float32Array<ArrayBuffer>, scale_1: Float32Array<ArrayBuffer>, scale_2: Float32Array<ArrayBuffer>, f_dc_0: Float32Array<ArrayBuffer>, f_dc_1: Float32Array<ArrayBuffer>, f_dc_2: Float32Array<ArrayBuffer>, opacity: Float32Array<ArrayBuffer>, rot_0: Float32Array<ArrayBuffer>, rot_1: Float32Array<ArrayBuffer>, rot_2: Float32Array<ArrayBuffer>, rot_3: Float32Array<ArrayBuffer>}}>|Promise<never>|Promise<*>|Promise<*>|*}
+   * @returns {Promise<*>}
    */
   parseColumns(data) {
     const webpUrl = new URL(`${this._wepbName}`, this._wasmBaseUrl).href

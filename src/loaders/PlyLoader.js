@@ -13,7 +13,7 @@ class PlyLoader extends Loader {
   /**
    *
    * @param data
-   * @returns {Promise<void>}
+   * @returns {Promise<*>}
    */
   parseColumns(data) {
     if (this._workerLimit > 0) {

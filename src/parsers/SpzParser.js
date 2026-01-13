@@ -8,6 +8,12 @@ const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4
 const SH_C0 = 0.28209479177387814
 const C_MASK = (1 << 9) - 1 // 511
 
+/**
+ *
+ * @param data
+ * @returns {Promise<Uint8Array<ArrayBuffer>>}
+ * @private
+ */
 async function _decompressGZIP(data) {
   const blob = new Blob([data], { type: 'application/gzip' })
   const ds = new DecompressionStream('gzip')

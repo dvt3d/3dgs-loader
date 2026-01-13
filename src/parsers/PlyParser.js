@@ -166,7 +166,6 @@ export function parsePlyToColumns(data) {
       columns,
     }
   }
-
   return elements['vertex']
 }
 
