@@ -108,3 +108,38 @@ export function stripUrlParams(url) {
   u.hash = ''
   return u.toString()
 }
+
+/**
+ *
+ * @param encoded
+ * @returns {number|number}
+ */
+export function decodeFloat16(encoded) {
+  const signBit = (encoded >> 15) & 1
+  const exponent = (encoded >> 10) & 0x1f
+  const mantissa = encoded & 0x3ff
+  if (exponent === 0) {
+    if (mantissa === 0) {
+      return signBit ? -0.0 : 0.0
+    }
+    // Denormalized number
+    let m = mantissa
+    let exp = -14
+    while (!(m & 0x400)) {
+      m <<= 1
+      exp--
+    }
+    m &= 0x3ff
+    const finalExp = exp + 127
+    const finalMantissa = m << 13
+    const bits = (signBit << 31) | (finalExp << 23) | finalMantissa
+    return new Float32Array(new Uint32Array([bits]).buffer)[0]
+  }
+  if (exponent === 0x1f) {
+    return mantissa === 0 ? (signBit ? -Infinity : Infinity) : NaN
+  }
+  const finalExp = exponent - 15 + 127
+  const finalMantissa = mantissa << 13
+  const bits = (signBit << 31) | (finalExp << 23) | finalMantissa
+  return new Float32Array(new Uint32Array([bits]).buffer)[0]
+}

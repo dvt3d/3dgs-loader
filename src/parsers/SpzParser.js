@@ -341,7 +341,7 @@ export async function parseSpzToSplat(data) {
   /* ---------- output buffer ---------- */
   const outBuffer = new ArrayBuffer(ROW_LENGTH * numSplats)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8ClampedArray(outBuffer)
+  const outU8 = new Uint8Array(outBuffer)
   const scale = 1.0 / (1 << fractionalBits)
   const epsilon = 1e-6
 

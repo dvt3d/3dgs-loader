@@ -257,7 +257,7 @@ export async function parseSogToSplat(
   /* ---------- output buffer ---------- */
   const outBuffer = new ArrayBuffer(ROW_LENGTH * count)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8ClampedArray(outBuffer)
+  const outU8 = new Uint8Array(outBuffer)
 
   for (let i = 0; i < count; i++) {
     const baseF32 = (i * ROW_LENGTH) >> 2

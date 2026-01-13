@@ -218,7 +218,7 @@ export function parsePlyToSplat(data) {
   /* ---------- output buffer ---------- */
   const outBuffer = new ArrayBuffer(ROW_LENGTH * numSplats)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8ClampedArray(outBuffer)
+  const outU8 = new Uint8Array(outBuffer)
 
   const hasScale = 'scale_0' in types
   const hasColorSH = 'f_dc_0' in types
