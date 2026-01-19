@@ -1,17 +1,20 @@
 {
   "name": "3dgs-loader",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "main": "dist/index.js",
   "repository": "https://github.com/dvt3d/gs-loader.git",
   "author": "Caven Chen <cavencj@gmail.com>",
   "keywords": [
     "3dgs-loader",
+    "Gaussian loader",
+    "Gaussian splatting",
     "3dgs",
     "gs",
     "spz",
     "sog",
     "splat",
-    "ply"
+    "ply",
+    "k-spalt"
   ],
   "license": "Apache-2.0",
   "scripts": {
@@ -24,8 +27,7 @@
     "lint": "eslint --fix src"
   },
   "files": [
-    "dist",
-    "wasm"
+    "dist"
   ],
   "devDependencies": {
     "chalk": "^5.6.2",

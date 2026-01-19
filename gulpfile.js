@@ -60,10 +60,18 @@ async function buildModules(options) {
   }
 }
 
+async function copyWasm() {
+  await fse.emptyDir(path.join('dist', 'wasm'))
+  await gulp
+    .src('wasm/**/*', { nodir: true })
+    .pipe(gulp.dest(path.join('dist', 'wasm')))
+}
+
 async function regenerate(option, content) {
   await fse.remove('dist/index.js')
   await buildModules(option)
   await buildWorkers(option)
+  await copyWasm()
 }
 
 export const dev = gulp.series(() => {
@@ -99,10 +107,12 @@ export const build = gulp.series(
   () => buildModules({ iife: true }),
   () => buildModules({ node: true }),
   () => buildWorkers(),
+  () => copyWasm(),
 )
 
 export const buildRelease = gulp.series(
   () => buildModules({ iife: true, minify: true }),
   () => buildModules({ node: true, minify: true }),
   () => buildWorkers({ minify: true }),
+  () => copyWasm(),
 )
