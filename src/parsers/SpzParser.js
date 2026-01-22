@@ -535,9 +535,7 @@ export async function parseSpzToAttributes(data) {
         rotationsView.subarray(rBase, rBase + 4),
       )
     }
-    // 强制归一化（非常重要）
     const invLen = 1.0 / Math.hypot(q0, q1, q2, q3)
-
     const qBase = i * 4
     attributes.rotations[qBase + 3] = q0 * invLen
     attributes.rotations[qBase + 0] = q1 * invLen
