@@ -1,5 +1,5 @@
-import { transferColumns } from './transfer'
 import { parseSogToColumns, parseSogToSplat } from '../parsers/SogParser'
+import { transferObject } from './transfer'
 
 onmessage = async (message) => {
   const data = message.data
@@ -30,7 +30,7 @@ onmessage = async (message) => {
         labels,
       )
       if (result && result.columns) {
-        transfer = transferColumns(result.columns)
+        transfer = transferObject(result.columns)
       }
     } else if (data.type === 'parseAsSplat') {
       result = await parseSogToSplat(

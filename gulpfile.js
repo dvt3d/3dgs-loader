@@ -43,8 +43,9 @@ async function buildModules(options) {
   if (options.iife) {
     await esbuild.build({
       ...buildConfig,
-      format: 'iife',
+      format: 'esm',
       minify: options.minify,
+      platform: 'browser',
       outfile: path.join('dist', '3dgs-loader.min.js'),
     })
   }

@@ -1,5 +1,9 @@
-import { parseSpzToColumns, parseSpzToSplat } from '../parsers/SpzParser'
-import { transferColumns } from './transfer'
+import {
+  parseSpzToAttributes,
+  parseSpzToColumns,
+  parseSpzToSplat,
+} from '../parsers/SpzParser'
+import { transferObject } from './transfer'
 
 onmessage = async (message) => {
   const data = message.data
@@ -9,7 +13,12 @@ onmessage = async (message) => {
     if (data.type === 'parseColumns') {
       result = await parseSpzToColumns(data.payload)
       if (result && result.columns) {
-        transfer = transferColumns(result.columns)
+        transfer = transferObject(result.columns)
+      }
+    } else if (data.type === 'parseAsAttributes') {
+      result = await parseSpzToAttributes(data.payload)
+      if (result) {
+        transfer = transferObject(result)
       }
     } else if (data.type === 'parseAsSplat') {
       result = await parseSpzToSplat(data.payload)

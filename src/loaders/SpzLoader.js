@@ -1,4 +1,8 @@
-import { parseSpzToColumns, parseSpzToSplat } from '../parsers/SpzParser'
+import {
+  parseSpzToAttributes,
+  parseSpzToColumns,
+  parseSpzToSplat,
+} from '../parsers/SpzParser'
 import { requestData } from '../Util'
 import Loader from './Loader'
 
@@ -52,6 +56,34 @@ class SpzLoader extends Loader {
       })
     }
     return Promise.resolve(parseSpzToSplat(data))
+  }
+
+  /**
+   *
+   * @param url
+   * @param options
+   * @returns {Promise<*>}
+   */
+  async loadAsAttributes(url, options = {}) {
+    const { onProgress } = options
+    const data = await requestData(url, onProgress)
+    return this.parseAsAttributes(data)
+  }
+
+  /**
+   *
+   * @param data
+   * @returns {Promise<*>}
+   */
+  parseAsAttributes(data) {
+    if (this._workerLimit > 0) {
+      return this._workerPool.run({
+        type: 'parseAsAttributes',
+        payload: data,
+        transfer: [data.buffer],
+      })
+    }
+    return Promise.resolve(parseSpzToAttributes(data))
   }
 }
 

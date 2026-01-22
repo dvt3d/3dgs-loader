@@ -1,5 +1,5 @@
 import { parsePlyToColumns, parsePlyToSplat } from '../parsers/PlyParser'
-import { transferColumns } from './transfer'
+import { transferObject } from './transfer'
 
 onmessage = (message) => {
   const data = message.data
@@ -9,7 +9,7 @@ onmessage = (message) => {
     if (data.type === 'parseColumns') {
       result = parsePlyToColumns(data.payload)
       if (result && result.columns) {
-        transfer = transferColumns(result.columns)
+        transfer = transferObject(result.columns)
       }
     } else if (data.type === 'parseAsSplat') {
       result = parsePlyToSplat(data.payload)

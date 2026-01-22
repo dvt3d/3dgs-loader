@@ -143,3 +143,14 @@ export function decodeFloat16(encoded) {
   const bits = (signBit << 31) | (finalExp << 23) | finalMantissa
   return new Float32Array(new Uint32Array([bits]).buffer)[0]
 }
+
+/**
+ *
+ * @param value
+ * @param min
+ * @param max
+ * @returns {number}
+ */
+export function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}

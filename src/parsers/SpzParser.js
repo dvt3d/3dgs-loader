@@ -1,4 +1,4 @@
-import { createColumns } from '../Util'
+import { clamp, createColumns } from '../Util'
 
 const SH_C0_2 = 0.15
 const HARMONICS_COMPONENT_COUNT = [0, 9, 24, 45]
@@ -184,7 +184,7 @@ export async function parseSpzToColumns(data) {
   const scale = 1.0 / (1 << fractionalBits)
 
   for (let i = 0; i < numSplats; i++) {
-    // Read position (3 × uint24)
+    // Decode 24-bit fixed point coordinates
     const x = _getFixed24(positionsView, i, 0) * scale
     const y = _getFixed24(positionsView, i, 1) * scale
     const z = _getFixed24(positionsView, i, 2) * scale
@@ -399,4 +399,150 @@ export async function parseSpzToSplat(data) {
     numSplats,
     buffer: outBuffer,
   }
+}
+
+/**
+ *
+ * @param data
+ * @returns {Promise<{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}>}
+ */
+export async function parseSpzToAttributes(data) {
+  let spzData = null
+  if (data.byteLength >= 2) {
+    const u16 = (data[0] << 8) | data[1]
+    if (u16 === 0x1f8b) {
+      spzData = await _decompressGZIP(data)
+    }
+  }
+  if (spzData.byteLength < HEADER_SIZE) {
+    throw new Error('File too small to be valid .spz')
+  }
+  const dv = new DataView(
+    spzData.buffer,
+    spzData.byteOffset,
+    spzData.byteLength,
+  )
+  // header
+  if (dv.getUint32(0, true) !== MAGIC_NGSP) {
+    throw new Error('invalid file header')
+  }
+  const version = dv.getUint32(4, true)
+  if (version !== 2 && version !== 3) {
+    throw new Error(`Unsupported version ${version}`)
+  }
+  const numSplats = dv.getUint32(8, true)
+  const fractionalBits = dv.getUint8(13)
+  const positionsByteSize = numSplats * 3 * 3
+  const alphasByteSize = numSplats
+  const colorsByteSize = numSplats * 3
+  const scalesByteSize = numSplats * 3
+  const rotationsByteSize = numSplats * (version === 3 ? 4 : 3)
+  let offset = HEADER_SIZE
+  const positionsView = new DataView(
+    spzData.buffer,
+    dv.byteOffset + offset,
+    positionsByteSize,
+  )
+  offset += positionsByteSize
+  const alphasView = new Uint8Array(
+    spzData.buffer,
+    dv.byteOffset + offset,
+    alphasByteSize,
+  )
+  offset += alphasByteSize
+  const colorsView = new Uint8Array(
+    spzData.buffer,
+    dv.byteOffset + offset,
+    colorsByteSize,
+  )
+  offset += colorsByteSize
+  const scalesView = new Uint8Array(
+    spzData.buffer,
+    dv.byteOffset + offset,
+    scalesByteSize,
+  )
+  offset += scalesByteSize
+  const rotationsView = new Uint8Array(
+    spzData.buffer,
+    dv.byteOffset + offset,
+    rotationsByteSize,
+  )
+  const attributes = {
+    numSplats,
+    positions: new Float32Array(numSplats * 3),
+    scales: new Float32Array(numSplats * 3),
+    rotations: new Float32Array(numSplats * 4),
+    colors: new Uint8Array(numSplats * 4),
+  }
+
+  const scale = 1.0 / (1 << fractionalBits)
+  const epsilon = 1e-6
+
+  for (let i = 0; i < numSplats; i++) {
+    /* ================= position ================= */
+    const pBase = i * 3
+    attributes.positions[pBase + 0] = _getFixed24(positionsView, i, 0) * scale
+    attributes.positions[pBase + 1] = _getFixed24(positionsView, i, 1) * scale
+    attributes.positions[pBase + 2] = _getFixed24(positionsView, i, 2) * scale
+
+    /* ================= scale ================= */
+    attributes.scales[pBase + 0] = Math.exp(scalesView[i * 3 + 0] / 16.0 - 10.0)
+    attributes.scales[pBase + 1] = Math.exp(scalesView[i * 3 + 1] / 16.0 - 10.0)
+    attributes.scales[pBase + 2] = Math.exp(scalesView[i * 3 + 2] / 16.0 - 10.0)
+
+    /* ================= color ================= */
+    const cBase = i * 4
+    attributes.colors[cBase + 0] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 0])) * 255,
+        0,
+        255,
+      ),
+    )
+    attributes.colors[cBase + 1] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 1])) * 255,
+        0,
+        255,
+      ),
+    )
+    attributes.colors[cBase + 2] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 2])) * 255,
+        0,
+        255,
+      ),
+    )
+    /* ================= opacity ================= */
+    const opacity = Math.max(
+      epsilon,
+      Math.min(1.0 - epsilon, alphasView[i] / 255.0),
+    )
+    attributes.colors[cBase + 3] = Math.round(opacity * 255)
+
+    /* ================= rotation ================= */
+    let q0, q1, q2, q3
+
+    if (version === 2) {
+      const rBase = i * 3
+      q1 = rotationsView[rBase + 0] / 127.5 - 1.0
+      q2 = rotationsView[rBase + 1] / 127.5 - 1.0
+      q3 = rotationsView[rBase + 2] / 127.5 - 1.0
+      q0 = Math.sqrt(Math.max(0.0, 1.0 - (q1 * q1 + q2 * q2 + q3 * q3)))
+    } else {
+      const rBase = i * 4
+      ;[q0, q1, q2, q3] = _unpackQuaternionSmallestThree(
+        rotationsView.subarray(rBase, rBase + 4),
+      )
+    }
+    // 强制归一化（非常重要）
+    const invLen = 1.0 / Math.hypot(q0, q1, q2, q3)
+
+    const qBase = i * 4
+    attributes.rotations[qBase + 3] = q0 * invLen
+    attributes.rotations[qBase + 0] = q1 * invLen
+    attributes.rotations[qBase + 1] = q2 * invLen
+    attributes.rotations[qBase + 2] = q3 * invLen
+  }
+  return attributes
 }
