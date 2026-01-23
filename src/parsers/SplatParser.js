@@ -107,7 +107,7 @@ export function parseSplatToAttributes(data) {
     positions: new Float32Array(numSplats * 3),
     scales: new Float32Array(numSplats * 3),
     rotations: new Float32Array(numSplats * 4),
-    colors: new Uint8Array(numSplats * 4),
+    colors: new Uint8ClampedArray(numSplats * 4),
   }
   for (let i = 0; i < numSplats; i++) {
     const offset = i * ROW_LENGTH

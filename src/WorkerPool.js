@@ -14,59 +14,98 @@ class WorkerPool {
     this._taskId = 0
     this._readyCount = 0
     this._allReady = !this.wasmUrl
+    this._creating = 0
+    this._initWorkers()
+  }
 
+  async _createWorker() {
+    try {
+      return new Worker(this.url, { type: 'module' })
+    } catch (err) {}
+    const res = await fetch(this.url)
+    if (!res.ok) {
+      throw new Error(`[WorkerPool] Failed to fetch worker: ${this.url}`)
+    }
+    const code = await res.text()
+    const blob = new Blob([code], { type: 'application/javascript' })
+    const blobUrl = URL.createObjectURL(blob)
+    return new Worker(blobUrl)
+  }
+
+  _initWorkers() {
     for (let i = 0; i < this.workerLimit; i++) {
-      const worker = new Worker(this.url, { type: 'module' })
-      worker.__id = i
-      worker.__busy = false
-      worker.__ready = !this.wasmUrl
-      worker.onmessage = (e) => {
-        const { id, result, __init } = e.data
-        if (__init) {
-          worker.__ready = true
-          this._readyCount++
-          if (this._readyCount === this.workerLimit) {
-            this._allReady = true
+      this._creating++
+      this._createWorker()
+        .then((worker) => {
+          this._creating--
+
+          worker.__id = i
+          worker.__busy = false
+          worker.__ready = !this.wasmUrl
+
+          worker.onmessage = (e) => {
+            const { id, result, __init } = e.data
+
+            // wasm init handshake
+            if (__init) {
+              worker.__ready = true
+              this._readyCount++
+
+              if (this._readyCount === this.workerLimit) {
+                this._allReady = true
+                this._schedule()
+              }
+              return
+            }
+
+            const record = this.pending.get(id)
+            if (!record) return
+
+            this.pending.delete(id)
+            worker.__busy = false
+            this.idleWorkers.push(worker)
+
+            if (result !== undefined) record.resolve(result)
+            else record.reject(new Error('Worker task failed'))
+
             this._schedule()
           }
-          return
-        }
-        const record = this.pending.get(id)
-        if (!record) return
-        this.pending.delete(id)
-        worker.__busy = false
-        this.idleWorkers.push(worker)
-        if (result) record.resolve(result)
-        else record.reject(new Error('do failed'))
-        this._schedule()
-      }
-      worker.onerror = (err) => {
-        console.error('[WorkerPool] worker error', err)
-        worker.__busy = false
-        this.idleWorkers.push(worker)
-      }
-      this.workers.push(worker)
-      if (worker.__ready) {
-        this.idleWorkers.push(worker)
-      }
-      if (this.wasmUrl) {
-        worker.postMessage({
-          type: '__init__',
-          wasmUrl: this.wasmUrl,
+
+          worker.onerror = (err) => {
+            console.error('[WorkerPool] worker error', err)
+            worker.__busy = false
+            this.idleWorkers.push(worker)
+          }
+
+          this.workers.push(worker)
+
+          if (worker.__ready) {
+            this.idleWorkers.push(worker)
+          }
+
+          // wasm init
+          if (this.wasmUrl) {
+            worker.postMessage({
+              type: '__init__',
+              wasmUrl: this.wasmUrl,
+            })
+          }
         })
-      }
+        .catch((err) => {
+          this._creating--
+          console.error('[WorkerPool] failed to create worker', err)
+        })
     }
   }
 
-  /**
-   * @private
-   */
   _schedule() {
     if (!this._allReady) return
     if (this.idleWorkers.length === 0) return
     if (this.taskQueue.length === 0) return
+
     const worker = this.idleWorkers.pop()
     const task = this.taskQueue.shift()
+
     worker.__busy = true
     worker.postMessage(
       {
@@ -89,7 +128,9 @@ class WorkerPool {
     if (this.taskQueue.length >= this.queueLimit) {
       return Promise.reject(new Error('[WorkerPool] task queue overflow'))
     }
+
     const id = ++this._taskId
+
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject })
       this.taskQueue.push({
@@ -109,6 +150,7 @@ class WorkerPool {
     for (const w of this.workers) {
       w.terminate()
     }
+
     this.workers.length = 0
     this.idleWorkers.length = 0
     this.taskQueue.length = 0

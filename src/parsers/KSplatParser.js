@@ -346,7 +346,7 @@ export function parseKSplatToSplat(data) {
   const numSplats = mainHeader.getUint32(16, true)
   const outBuffer = new ArrayBuffer(ROW_LENGTH * numSplats)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8Array(outBuffer)
+  const outU8 = new Uint8ClampedArray(outBuffer)
   _forEachKSplat(data, { harmonics: false }, (i, s) => {
     const baseF32 = (i * ROW_LENGTH) >> 2
     const baseU8 = i * ROW_LENGTH
@@ -388,7 +388,7 @@ export function parseKSplatToAttributes(data) {
     positions: new Float32Array(numSplats * 3),
     scales: new Float32Array(numSplats * 3),
     rotations: new Float32Array(numSplats * 4),
-    colors: new Uint8Array(numSplats * 4),
+    colors: new Uint8ClampedArray(numSplats * 4),
   }
   _forEachKSplat(data, { harmonics: false }, (i, s) => {
     // position

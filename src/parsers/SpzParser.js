@@ -341,7 +341,7 @@ export async function parseSpzToSplat(data) {
   /* ---------- output buffer ---------- */
   const outBuffer = new ArrayBuffer(ROW_LENGTH * numSplats)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8Array(outBuffer)
+  const outU8 = new Uint8ClampedArray(outBuffer)
   const scale = 1.0 / (1 << fractionalBits)
   const epsilon = 1e-6
 
@@ -360,12 +360,27 @@ export async function parseSpzToSplat(data) {
     outF32[baseF32 + 5] = Math.exp(scalesView[i * 3 + 2] / 16.0 - 10.0)
 
     // Read color and opacity (4 × uint8)
-    outU8[baseU8 + 24] =
-      (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 0])) * 255
-    outU8[baseU8 + 25] =
-      (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 1])) * 255
-    outU8[baseU8 + 26] =
-      (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 2])) * 255
+    outU8[baseU8 + 24] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 0])) * 255,
+        0,
+        255,
+      ),
+    )
+    outU8[baseU8 + 25] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 1])) * 255,
+        0,
+        255,
+      ),
+    )
+    outU8[baseU8 + 26] = Math.round(
+      clamp(
+        (0.5 + SH_C0 * _decodeSH0FromU8(colorsView[i * 3 + 2])) * 255,
+        0,
+        255,
+      ),
+    )
 
     /* ---------- opacity ---------- */
     const opacity = Math.max(
@@ -472,7 +487,7 @@ export async function parseSpzToAttributes(data) {
     positions: new Float32Array(numSplats * 3),
     scales: new Float32Array(numSplats * 3),
     rotations: new Float32Array(numSplats * 4),
-    colors: new Uint8Array(numSplats * 4),
+    colors: new Uint8ClampedArray(numSplats * 4),
   }
 
   const scale = 1.0 / (1 << fractionalBits)

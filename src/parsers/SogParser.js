@@ -257,7 +257,7 @@ export async function parseSogToSplat(
   /* ---------- output buffer ---------- */
   const outBuffer = new ArrayBuffer(ROW_LENGTH * count)
   const outF32 = new Float32Array(outBuffer)
-  const outU8 = new Uint8Array(outBuffer)
+  const outU8 = new Uint8ClampedArray(outBuffer)
 
   for (let i = 0; i < count; i++) {
     const baseF32 = (i * ROW_LENGTH) >> 2
@@ -366,7 +366,7 @@ export async function parseSogToAttributes(
     positions: new Float32Array(numSplats * 3),
     scales: new Float32Array(numSplats * 3),
     rotations: new Float32Array(numSplats * 4),
-    colors: new Uint8Array(numSplats * 4),
+    colors: new Uint8ClampedArray(numSplats * 4),
   }
   for (let i = 0; i < numSplats; i++) {
     // position
