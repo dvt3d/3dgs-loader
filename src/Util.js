@@ -154,3 +154,34 @@ export function decodeFloat16(encoded) {
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
+
+/**
+ *
+ * @param url
+ * @returns {*|string}
+ */
+export function resolveUrl(url) {
+  if (!url || /^[a-zA-Z]+:\/\//.test(url)) {
+    return url
+  }
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.url) {
+      return new URL(url, import.meta.url).href
+    }
+  } catch (e) {}
+  if (
+    typeof document !== 'undefined' &&
+    document.currentScript &&
+    document.currentScript.src
+  ) {
+    return new URL(url, document.currentScript.src).href
+  }
+  try {
+    return new URL(
+      url,
+      typeof location !== 'undefined' ? location.href : undefined,
+    ).href
+  } catch (_) {
+    return url
+  }
+}

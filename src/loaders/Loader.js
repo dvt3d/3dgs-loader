@@ -1,16 +1,13 @@
 import WorkerPool from '../WorkerPool'
-import { requestData } from '../Util'
+import { requestData, resolveUrl } from '../Util'
 
 class Loader {
   constructor(options = {}) {
     this._workerLimit = options.workerLimit || 0
-    this._workerBaseUrl = new URL(
-      options.workerBaseUrl || './',
-      import.meta.url,
-    )
+    this._workerBaseUrl = resolveUrl(options.workerBaseUrl || './')
     this._workerName = options.workerName
     this._workerPool = null
-    this._wasmBaseUrl = new URL(options.wasmBaseUrl || './', import.meta.url)
+    this._wasmBaseUrl = resolveUrl(options.wasmBaseUrl || './')
     if (this._workerLimit > 0) {
       this._workerPool = new WorkerPool({
         url: new URL(`workers/${this._workerName}`, this._workerBaseUrl).href,
