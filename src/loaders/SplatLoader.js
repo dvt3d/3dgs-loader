@@ -1,6 +1,9 @@
-import { parseSplatToColumns } from '../parsers/SplatParser'
 import { requestData } from '../Util'
 import Loader from './Loader'
+import {
+  parseSplatToAttributes,
+  parseSplatToColumns,
+} from '../parsers/SplatParser'
 
 const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4
 
@@ -10,22 +13,26 @@ class SplatLoader extends Loader {
       ...options,
       workerName: 'splat.worker.min.js',
     })
+    this._parseToColumnsFn = parseSplatToColumns
+    this._parseToAttributesFn = parseSplatToAttributes
+  }
+
+  /**
+   *
+   * @param url
+   * @param options
+   * @returns {Promise<void>}
+   */
+  async loadAsSplat(url, options = {}) {
+    throw new Error('[SplatLoader] loadAsSplat() is not implemented.')
   }
 
   /**
    *
    * @param data
-   * @returns {Promise<*>}
    */
-  parseColumns(data) {
-    if (this._workerLimit > 0) {
-      return this._workerPool.run({
-        type: 'parseColumns',
-        payload: data,
-        transfer: [data.buffer],
-      })
-    }
-    return Promise.resolve(parseSplatToColumns(data))
+  parseAsSplat(data) {
+    throw new Error('[SplatLoader] parseAsSplat() is not implemented.')
   }
 
   /**

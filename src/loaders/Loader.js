@@ -17,6 +17,9 @@ class Loader {
         workerLimit: this._workerLimit,
       })
     }
+    this._parseToColumnsFn = undefined
+    this._parseToSplatFn = undefined
+    this._parseToAttributesFn = undefined
   }
 
   /**
@@ -34,10 +37,82 @@ class Loader {
   /**
    *
    * @param data
-   * @returns {Promise<Awaited<Loader>>}
+   * @returns {Promise<*>}
    */
   parseColumns(data) {
-    return Promise.resolve(this)
+    if (this._workerLimit > 0) {
+      return this._workerPool.run({
+        type: 'parseColumns',
+        payload: data,
+        transfer: [data.buffer],
+      })
+    }
+    if (!this._parseToColumnsFn) {
+      return null
+    }
+    return Promise.resolve(this._parseToColumnsFn(data))
+  }
+
+  /**
+   *
+   * @param url
+   * @param options
+   * @returns {Promise<*>}
+   */
+  async loadAsSplat(url, options = {}) {
+    const { onProgress } = options
+    const data = await requestData(url, onProgress)
+    return this.parseAsSplat(data)
+  }
+
+  /**
+   *
+   * @param data
+   * @returns {Promise<*>}
+   */
+  parseAsSplat(data) {
+    if (this._workerLimit > 0) {
+      return this._workerPool.run({
+        type: 'parseAsSplat',
+        payload: data,
+        transfer: [data.buffer],
+      })
+    }
+    if (!this._parseToSplatFn) {
+      return null
+    }
+    return Promise.resolve(this._parseToSplatFn(data))
+  }
+
+  /**
+   *
+   * @param url
+   * @param options
+   * @returns {Promise<*>}
+   */
+  async loadAsAttributes(url, options = {}) {
+    const { onProgress } = options
+    const data = await requestData(url, onProgress)
+    return this.parseAsAttributes(data)
+  }
+
+  /**
+   *
+   * @param data
+   * @returns {Promise<*>}
+   */
+  parseAsAttributes(data) {
+    if (this._workerLimit > 0) {
+      return this._workerPool.run({
+        type: 'parseAsAttributes',
+        payload: data,
+        transfer: [data.buffer],
+      })
+    }
+    if (!this._parseToAttributesFn) {
+      return null
+    }
+    return Promise.resolve(this._parseToAttributesFn(data))
   }
 
   /**

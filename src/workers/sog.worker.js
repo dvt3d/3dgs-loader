@@ -1,4 +1,8 @@
-import { parseSogToColumns, parseSogToSplat } from '../parsers/SogParser'
+import {
+  parseSogToAttributes,
+  parseSogToColumns,
+  parseSogToSplat,
+} from '../parsers/SogParser'
 import { transferObject } from './transfer'
 
 onmessage = async (message) => {
@@ -31,6 +35,19 @@ onmessage = async (message) => {
       )
       if (result && result.columns) {
         transfer = transferObject(result.columns)
+      }
+    } else if (data.type === 'parseAsAttributes') {
+      result = await parseSogToAttributes(
+        webpUrl,
+        meta,
+        means_l,
+        means_u,
+        quats,
+        scales,
+        colors,
+      )
+      if (result) {
+        transfer = transferObject(result)
       }
     } else if (data.type === 'parseAsSplat') {
       result = await parseSogToSplat(

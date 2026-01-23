@@ -3,6 +3,7 @@ import {
   parseKSplatToSplat,
 } from '../parsers/KSplatParser'
 import { transferObject } from './transfer'
+import { parseSplatToAttributes } from '../parsers/SplatParser'
 
 onmessage = (message) => {
   const data = message.data
@@ -13,6 +14,11 @@ onmessage = (message) => {
       result = parseKSplatToColumns(data.payload)
       if (result && result.columns) {
         transfer = transferObject(result.columns)
+      }
+    } else if (data.type === 'parseAsAttributes') {
+      result = parseSplatToAttributes(data.payload)
+      if (result) {
+        transfer = transferObject(result)
       }
     } else if (data.type === 'parseAsSplat') {
       result = parseKSplatToSplat(data.payload)

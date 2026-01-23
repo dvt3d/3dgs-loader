@@ -1,4 +1,4 @@
-import { createColumns, invLogTransform, sigmoidInv } from '../Util'
+import { clamp, createColumns, invLogTransform, sigmoidInv } from '../Util'
 import WasmTask from '../WasmTask'
 import wasmTask from '../WasmTask'
 
@@ -311,4 +311,114 @@ export async function parseSogToSplat(
     numSplats: count,
     buffer: outBuffer,
   }
+}
+
+/**
+ *
+ * @param data
+ * @returns {Promise<{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}>}
+ */
+export async function parseSogToAttributes(
+  webpUrl,
+  meta,
+  means_l,
+  means_u,
+  quats,
+  scales,
+  colors,
+) {
+  const webpWasmTask = new WasmTask(webpUrl)
+  await webpWasmTask.init()
+  // meta.json
+  const numSplats = meta.count
+
+  const { mins, maxs } = meta.means
+  const xMin = mins[0]
+  const xScale = maxs[0] - mins[0] || 1
+  const yMin = mins[1]
+  const yScale = maxs[1] - mins[1] || 1
+  const zMin = mins[2]
+  const zScale = maxs[2] - mins[2] || 1
+  // Prepare output columns
+  const fnName = 'webp_decode_rgba'
+  const webpData = await Promise.all([
+    webpWasmTask.run(fnName, means_l),
+    webpWasmTask.run(fnName, means_u),
+    webpWasmTask.run(fnName, scales),
+    webpWasmTask.run(fnName, colors),
+    webpWasmTask.run(fnName, quats),
+  ])
+
+  const sCode = new Float32Array(meta.scales.codebook)
+  const cCode = new Float32Array(meta.sh0.codebook)
+
+  const { xs, ys, zs } = _decodeMeans(
+    webpData[0].rgba,
+    webpData[1].rgba,
+    numSplats,
+  )
+  const sl = webpData[2].rgba
+  const c0 = webpData[3].rgba
+  const qr = webpData[4].rgba
+
+  const attributes = {
+    numSplats,
+    positions: new Float32Array(numSplats * 3),
+    scales: new Float32Array(numSplats * 3),
+    rotations: new Float32Array(numSplats * 4),
+    colors: new Uint8Array(numSplats * 4),
+  }
+  for (let i = 0; i < numSplats; i++) {
+    // position
+    const lx = xMin + xScale * (xs[i] / 65535)
+    const ly = yMin + yScale * (ys[i] / 65535)
+    const lz = zMin + zScale * (zs[i] / 65535)
+    attributes.positions[i * 3 + 0] = invLogTransform(lx)
+    attributes.positions[i * 3 + 1] = invLogTransform(ly)
+    attributes.positions[i * 3 + 2] = invLogTransform(lz)
+
+    // scale
+    const offset = i * 4
+    attributes.scales[i * 3 + 0] = Math.exp(sCode[sl[offset + 0]])
+    attributes.scales[i * 3 + 1] = Math.exp(sCode[sl[offset + 1]])
+    attributes.scales[i * 3 + 2] = Math.exp(sCode[sl[offset + 2]])
+
+    //color
+    attributes.colors[i * 4 + 0] = Math.round(
+      clamp((0.5 + SH_C0 * cCode[c0[offset + 0]]) * 255, 0, 255),
+    )
+    attributes.colors[i * 4 + 1] = Math.round(
+      clamp((0.5 + SH_C0 * cCode[c0[offset + 1]]) * 255, 0, 255),
+    )
+    attributes.colors[i * 4 + 2] = Math.round(
+      clamp((0.5 + SH_C0 * cCode[c0[offset + 2]]) * 255, 0, 255),
+    )
+    attributes.colors[i * 4 + 3] = c0[offset + 3]
+
+    //rotation
+    const tag = qr[offset + 3]
+    let q0 = 0
+    let q1 = 0
+    let q2 = 0
+    let q3 = 1
+    if (tag >= 252 && tag <= 255) {
+      const [x, y, z, wq] = _unpackQuat(
+        qr[offset],
+        qr[offset + 1],
+        qr[offset + 2],
+        tag,
+      )
+      q0 = x
+      q1 = y
+      q2 = z
+      q3 = wq
+    }
+    const invLen = 1 / Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
+    attributes.rotations[i * 4 + 3] = q0 * invLen
+    attributes.rotations[i * 4 + 0] = q1 * invLen
+    attributes.rotations[i * 4 + 1] = q2 * invLen
+    attributes.rotations[i * 4 + 2] = q3 * invLen
+  }
+  webpWasmTask.dispose()
+  return attributes
 }

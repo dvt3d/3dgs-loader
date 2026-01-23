@@ -1,3 +1,5 @@
+import { clamp } from '../Util'
+
 const magicBytes = new Uint8Array([112, 108, 121, 10])
 const endHeaderBytes = new Uint8Array([
   10, 101, 110, 100, 95, 104, 101, 97, 100, 101, 114, 10,
@@ -271,4 +273,116 @@ export function parsePlyToSplat(data) {
   }
 
   return { buffer: outBuffer, numSplats }
+}
+
+/**
+ *
+ * @param data
+ * @returns {{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}}
+ */
+export function parsePlyToAttributes(data) {
+  if (!_compare(data, magicBytes)) {
+    throw new Error('not a ply file')
+  }
+  /* ---------- scan header ---------- */
+  let headerSize = magicBytes.length
+  while (headerSize < data.length) {
+    if (_compare(data, endHeaderBytes, headerSize - endHeaderBytes.length)) {
+      break
+    }
+    headerSize++
+  }
+  const plyHeader = _parseHeader(data.subarray(0, headerSize))
+
+  const vertex = plyHeader.elements.find((e) => e.name === 'vertex')
+  if (!vertex) {
+    throw new Error('PLY has no vertex element')
+  }
+
+  let rowStride = 0
+  const offsets = {}
+  const types = {}
+  for (const prop of vertex.properties) {
+    const T = _getDataType(prop.type)
+    offsets[prop.name] = rowStride
+    types[prop.name] = TYPE_MAP[prop.type]
+    rowStride += T.BYTES_PER_ELEMENT
+  }
+
+  const numSplats = vertex.count
+
+  const bodyOffset = data.byteOffset + headerSize
+  const dv = new DataView(data.buffer, bodyOffset, numSplats * rowStride)
+
+  const getAttr = (row, name) => {
+    const fn = types[name]
+    if (!fn) return undefined
+    return dv[fn](row * rowStride + offsets[name], true)
+  }
+
+  const attributes = {
+    numSplats,
+    positions: new Float32Array(numSplats * 3),
+    scales: new Float32Array(numSplats * 3),
+    rotations: new Float32Array(numSplats * 4),
+    colors: new Uint8Array(numSplats * 4),
+  }
+
+  const hasScale = 'scale_0' in types
+  const hasColorSH = 'f_dc_0' in types
+  const hasOpacity = 'opacity' in types
+  for (let i = 0; i < numSplats; i++) {
+    /* ================= position ================= */
+    attributes.positions[i * 3 + 0] = getAttr(i, 'x')
+    attributes.positions[i * 3 + 1] = getAttr(i, 'y')
+    attributes.positions[i * 3 + 2] = getAttr(i, 'z')
+
+    /* ================= scale ================= */
+    if (hasScale) {
+      const s0 = getAttr(i, 'scale_0')
+      const s1 = getAttr(i, 'scale_1')
+      const s2 = getAttr(i, 'scale_2')
+      const q0 = getAttr(i, 'rot_0')
+      const q1 = getAttr(i, 'rot_1')
+      const q2 = getAttr(i, 'rot_2')
+      const q3 = getAttr(i, 'rot_3')
+
+      attributes.scales[i * 3 + 0] = Math.exp(s0)
+      attributes.scales[i * 3 + 1] = Math.exp(s1)
+      attributes.scales[i * 3 + 2] = Math.exp(s2)
+
+      const invLen = 1 / Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
+      attributes.rotations[i * 4 + 3] = q0 * invLen
+      attributes.rotations[i * 4 + 0] = q1 * invLen
+      attributes.rotations[i * 4 + 1] = q2 * invLen
+      attributes.rotations[i * 4 + 2] = q3 * invLen
+    } else {
+      attributes.scales[i * 3 + 0] = 0.01
+      attributes.scales[i * 3 + 1] = 0.01
+      attributes.scales[i * 3 + 2] = 0.01
+      attributes.rotations[i * 4 + 0] = 255
+    }
+
+    /* ================= color ================= */
+    if (hasColorSH) {
+      attributes.colors[i * 4 + 0] = Math.round(
+        clamp((0.5 + SH_C0 * getAttr(i, 'f_dc_0')) * 255, 0, 255),
+      )
+      attributes.colors[i * 4 + 1] = Math.round(
+        clamp((0.5 + SH_C0 * getAttr(i, 'f_dc_1')) * 255, 0, 255),
+      )
+      attributes.colors[i * 4 + 2] = Math.round(
+        clamp((0.5 + SH_C0 * getAttr(i, 'f_dc_2')) * 255, 0, 255),
+      )
+    } else {
+      attributes.colors[i * 4 + 0] = getAttr(i, 'red')
+      attributes.colors[i * 4 + 1] = getAttr(i, 'green')
+      attributes.colors[i * 4 + 2] = getAttr(i, 'blue')
+    }
+    /* ================= opacity ================= */
+    attributes.colors[i * 4 + 3] = hasOpacity
+      ? (1 / (1 + Math.exp(-getAttr(i, 'opacity')))) * 255
+      : 255
+  }
+  return attributes
 }

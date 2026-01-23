@@ -90,7 +90,48 @@ const splat = await loader.parseAsSplat(dataBuffer)
 - Suitable when data is already available in memory
 - **Not supported by `SplatLoader`**
 
-### 2.6 Dispose the Loader
+### 2.6 Load as Attributes
+
+```js
+const attributes = await loader.loadAsAttributes('***.ply', {
+    onProgress: (percent) => {
+        console.log(`loading: ${percent}`)
+    },
+})
+```
+
+- Loads a 3DGS source and parses it directly into **Attributes format**
+- Produces typed arrays:
+    - `positions: Float32Array`
+    - `scales: Float32Array`
+    - `rotations: Float32Array`
+    - `colors: Uint8Array`
+
+---
+
+### 2.7 Parse as Attributes (From Existing Buffer)
+
+```js
+const attributes = await loader.parseAsAttributes(dataBuffer)
+```
+
+- Parses raw data already available in memory into **Attributes format**
+
+#### Attributes Format Definition
+
+```js
+interface
+GaussianSplatAttributes
+{
+    numSplats: number
+    positions: Float32Array   // xyz, length = numSplats * 3
+    scales: Float32Array      // sx sy sz (linear), length = numSplats * 3
+    rotations: Float32Array   // quaternion xyzw, length = numSplats * 4
+    colors: Uint8Array        // rgba, length = numSplats * 4
+}
+```
+
+### 2.8 Dispose the Loader
 
 ```js
 loader.dispose()

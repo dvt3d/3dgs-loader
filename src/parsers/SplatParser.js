@@ -92,3 +92,48 @@ export function parseSplatToColumns(data) {
     columns,
   }
 }
+
+/**
+ *
+ * @param data
+ * @returns {{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}}
+ */
+export function parseSplatToAttributes(data) {
+  const numSplats = data.length / ROW_LENGTH
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength)
+
+  const attributes = {
+    numSplats,
+    positions: new Float32Array(numSplats * 3),
+    scales: new Float32Array(numSplats * 3),
+    rotations: new Float32Array(numSplats * 4),
+    colors: new Uint8Array(numSplats * 4),
+  }
+  for (let i = 0; i < numSplats; i++) {
+    const offset = i * ROW_LENGTH
+    // position
+    attributes.positions[i * 3 + 0] = dv.getFloat32(offset + 0, true)
+    attributes.positions[i * 3 + 1] = dv.getFloat32(offset + 4, true)
+    attributes.positions[i * 3 + 2] = dv.getFloat32(offset + 8, true)
+    // scale
+    attributes.scales[i * 3 + 0] = dv.getFloat32(offset + 12, true)
+    attributes.scales[i * 3 + 1] = dv.getFloat32(offset + 16, true)
+    attributes.scales[i * 3 + 2] = dv.getFloat32(offset + 20, true)
+    // color
+    attributes.colors[i * 4 + 0] = dv.getUint8(offset + 24)
+    attributes.colors[i * 4 + 1] = dv.getUint8(offset + 25)
+    attributes.colors[i * 4 + 2] = dv.getUint8(offset + 26)
+    attributes.colors[i * 4 + 3] = dv.getUint8(offset + 27)
+    // rotation
+    const qx = (dv.getUint8(offset + 28) - 128) / 128
+    const qy = (dv.getUint8(offset + 29) - 128) / 128
+    const qz = (dv.getUint8(offset + 30) - 128) / 128
+    const qw = (dv.getUint8(offset + 31) - 128) / 128
+    const invLen = 1.0 / Math.hypot(qx, qy, qz, qw)
+    attributes.rotations[i * 4 + 3] = qx * invLen
+    attributes.rotations[i * 4 + 0] = qy * invLen
+    attributes.rotations[i * 4 + 1] = qz * invLen
+    attributes.rotations[i * 4 + 2] = qw * invLen
+  }
+  return attributes
+}

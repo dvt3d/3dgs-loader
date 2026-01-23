@@ -1,7 +1,5 @@
 import { createColumns, decodeFloat16 } from '../Util'
 
-/* ===================== constants ===================== */
-
 const COMPRESSION_MODES = [
   {
     centerBytes: 12,
@@ -48,8 +46,6 @@ const SECTION_HEADER_SIZE = 1024
 const ROW_LENGTH = 3 * 4 + 3 * 4 + 4 + 4
 const SH_C0 = 0.28209479177387814
 
-/* ===================== utils ===================== */
-
 function _packSnorm8(v) {
   return Math.max(-128, Math.min(127, Math.round(v * 127)))
 }
@@ -80,8 +76,6 @@ function _scanMaxHarmonicsDegree(data) {
   }
   return maxDegree
 }
-
-/* ===================== core decoder ===================== */
 
 /**
  * Iterate all splats in ksplat and invoke callback
@@ -281,8 +275,6 @@ function _forEachKSplat(data, options, onSplat) {
   return numSplats
 }
 
-/* ===================== public APIs ===================== */
-
 /**
  * KSplat → Columns
  * options: { harmonics?: boolean }
@@ -342,6 +334,8 @@ export function parseKSplatToColumns(data) {
 
 /**
  * KSplat → Splat (no SH)
+ * @param data
+ * @returns {{buffer: ArrayBuffer, numSplats: number}}
  */
 export function parseKSplatToSplat(data) {
   const mainHeader = new DataView(
@@ -375,4 +369,51 @@ export function parseKSplatToSplat(data) {
     outU8[baseU8 + 31] = _packSnorm8(s.r3) & 0xff
   })
   return { buffer: outBuffer, numSplats }
+}
+
+/**
+ *
+ * @param data
+ * @returns {{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}}
+ */
+export function parseKSplatToAttributes(data) {
+  const mainHeader = new DataView(
+    data.buffer,
+    data.byteOffset,
+    MAIN_HEADER_SIZE,
+  )
+  const numSplats = mainHeader.getUint32(16, true)
+  const attributes = {
+    numSplats,
+    positions: new Float32Array(numSplats * 3),
+    scales: new Float32Array(numSplats * 3),
+    rotations: new Float32Array(numSplats * 4),
+    colors: new Uint8Array(numSplats * 4),
+  }
+  _forEachKSplat(data, { harmonics: false }, (i, s) => {
+    // position
+    attributes.positions[i * 3 + 0] = s.x
+    attributes.positions[i * 3 + 1] = s.y
+    attributes.positions[i * 3 + 2] = s.z
+    // scale
+    attributes.scales[i * 3 + 0] = s.sx > 0 ? Math.log(s.sx) : -10
+    attributes.scales[i * 3 + 1] = s.sy > 0 ? Math.log(s.sy) : -10
+    attributes.scales[i * 3 + 2] = s.sz > 0 ? Math.log(s.sz) : -10
+    //color
+    attributes.colors[i * 4 + 0] = s.c0
+    attributes.colors[i * 4 + 1] = s.c1
+    attributes.colors[i * 4 + 2] = s.c2
+    attributes.colors[i * 4 + 3] = s.c3
+    //rotation
+    let qx = s.r0
+    let qy = s.r1
+    let qz = s.r2
+    let qw = s.r3
+    const invLen = 1.0 / Math.hypot(qx, qy, qz, qw)
+    attributes.rotations[i * 4 + 3] = qx * invLen
+    attributes.rotations[i * 4 + 0] = qy * invLen
+    attributes.rotations[i * 4 + 1] = qz * invLen
+    attributes.rotations[i * 4 + 2] = qw * invLen
+  })
+  return attributes
 }

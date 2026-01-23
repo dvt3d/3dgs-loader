@@ -1,6 +1,5 @@
 /**
  * @Author: Caven Chen
- * @Date: 2024-04-26
  */
 
 'use strict'
@@ -63,9 +62,7 @@ async function buildModules(options) {
 
 async function copyWasm() {
   await fse.emptyDir(path.join('dist', 'wasm'))
-  await gulp
-    .src('wasm/**/*', { nodir: true })
-    .pipe(gulp.dest(path.join('dist', 'wasm')))
+  await fse.copySync('wasm', path.join('dist', 'wasm'))
 }
 
 async function regenerate(option, content) {

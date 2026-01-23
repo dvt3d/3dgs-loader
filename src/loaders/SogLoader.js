@@ -1,7 +1,11 @@
 import loader from './Loader'
 import { requestData, requestJson, stripUrlParams } from '../Util'
 import { unzipSync } from 'fflate/browser'
-import { parseSogToColumns, parseSogToSplat } from '../parsers/SogParser'
+import {
+  parseSogToAttributes,
+  parseSogToColumns,
+  parseSogToSplat,
+} from '../parsers/SogParser'
 
 class SogLoader extends loader {
   constructor(options = {}) {
@@ -186,6 +190,65 @@ class SogLoader extends loader {
       })
     }
     return parseSogToSplat(
+      webpUrl,
+      data.meta,
+      means_l,
+      means_u,
+      quats,
+      scales,
+      colors,
+    )
+  }
+
+  /**
+   *
+   * @param url
+   * @param options
+   * @returns {Promise<*>}
+   */
+  async loadAsAttributes(url, options = {}) {
+    const { onProgress } = options
+    const data = await this._loadData(url, {
+      onProgress,
+      needShN: false,
+    })
+    return await this.parseAsAttributes(data)
+  }
+
+  /**
+   *
+   * @param data
+   * @returns {Promise<*>}
+   */
+  parseAsAttributes(data) {
+    const webpUrl = new URL(`${this._wepbName}`, this._wasmBaseUrl).href
+    const means_l = data.sogData[0]
+    const means_u = data.sogData[1]
+    const quats = data.sogData[2]
+    const scales = data.sogData[3]
+    const colors = data.sogData[4]
+    if (this._workerLimit > 0) {
+      return this._workerPool.run({
+        type: 'parseAsAttributes',
+        payload: {
+          webpUrl,
+          meta: data.meta,
+          means_l,
+          means_u,
+          quats,
+          scales,
+          colors,
+        },
+        transfer: [
+          means_l.buffer,
+          means_u.buffer,
+          quats.buffer,
+          scales.buffer,
+          colors.buffer,
+        ],
+      })
+    }
+    return parseSogToAttributes(
       webpUrl,
       data.meta,
       means_l,

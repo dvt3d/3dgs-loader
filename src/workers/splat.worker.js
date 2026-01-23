@@ -1,4 +1,7 @@
-import { parseSplatToColumns } from '../parsers/SplatParser'
+import {
+  parseSplatToAttributes,
+  parseSplatToColumns,
+} from '../parsers/SplatParser'
 import { transferObject } from './transfer'
 
 onmessage = (message) => {
@@ -10,6 +13,11 @@ onmessage = (message) => {
       result = parseSplatToColumns(data.payload)
       if (result && result.columns) {
         transfer = transferObject(result.columns)
+      }
+    } else if (data.type === 'parseAsAttributes') {
+      result = parseSplatToAttributes(data.payload)
+      if (result) {
+        transfer = transferObject(result)
       }
     }
     postMessage(
