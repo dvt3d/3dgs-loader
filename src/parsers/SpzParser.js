@@ -405,10 +405,10 @@ export async function parseSpzToSplat(data) {
       )
     }
     const invLen = 1 / Math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
-    outU8[baseU8 + 28] = q0 * invLen * 128 + 128
-    outU8[baseU8 + 29] = q1 * invLen * 128 + 128
-    outU8[baseU8 + 30] = q2 * invLen * 128 + 128
-    outU8[baseU8 + 31] = q3 * invLen * 128 + 128
+    outU8[baseU8 + 28] = q3 * invLen * 128 + 128
+    outU8[baseU8 + 29] = q0 * invLen * 128 + 128
+    outU8[baseU8 + 30] = q1 * invLen * 128 + 128
+    outU8[baseU8 + 31] = q2 * invLen * 128 + 128
   }
   return {
     numSplats,
@@ -419,7 +419,7 @@ export async function parseSpzToSplat(data) {
 /**
  *
  * @param data
- * @returns {Promise<{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8Array<ArrayBuffer>}>}
+ * @returns {Promise<{numSplats: number, positions: Float32Array<ArrayBuffer>, scales: Float32Array<ArrayBuffer>, rotations: Float32Array<ArrayBuffer>, colors: Uint8ClampedArray<ArrayBuffer>}>}
  */
 export async function parseSpzToAttributes(data) {
   let spzData = null
@@ -552,10 +552,10 @@ export async function parseSpzToAttributes(data) {
     }
     const invLen = 1.0 / Math.hypot(q0, q1, q2, q3)
     const qBase = i * 4
-    attributes.rotations[qBase + 3] = q0 * invLen
-    attributes.rotations[qBase + 0] = q1 * invLen
-    attributes.rotations[qBase + 1] = q2 * invLen
-    attributes.rotations[qBase + 2] = q3 * invLen
+    attributes.rotations[qBase + 0] = q0 * invLen
+    attributes.rotations[qBase + 1] = q1 * invLen
+    attributes.rotations[qBase + 2] = q2 * invLen
+    attributes.rotations[qBase + 3] = q3 * invLen
   }
   return attributes
 }
