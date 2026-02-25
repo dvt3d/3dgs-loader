@@ -99,7 +99,7 @@ export const buildIIFE = gulp.series(() => buildModules({ iife: true }))
 
 export const buildNode = gulp.series(() => buildModules({ node: true }))
 
-export const buildWorker = gulp.series(() => buildModules())
+export const buildWorker = gulp.series(() => buildWorkers())
 
 export const build = gulp.series(
   () => buildModules({ iife: true }),

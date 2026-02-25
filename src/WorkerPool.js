@@ -22,14 +22,15 @@ class WorkerPool {
     try {
       return new Worker(this.url, { type: 'module' })
     } catch (err) {}
-    const res = await fetch(this.url)
-    if (!res.ok) {
-      throw new Error(`[WorkerPool] Failed to fetch worker: ${this.url}`)
-    }
-    const code = await res.text()
-    const blob = new Blob([code], { type: 'application/javascript' })
-    const blobUrl = URL.createObjectURL(blob)
-    return new Worker(blobUrl)
+
+    const wrapperCode = `
+      import ${JSON.stringify(this.url)};
+    `
+    const wrapperUrl = URL.createObjectURL(
+      new Blob([wrapperCode], { type: 'text/javascript' }),
+    )
+
+    return new Worker(wrapperUrl, { type: 'module' })
   }
 
   _initWorkers() {
